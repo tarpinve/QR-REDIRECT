@@ -1,1 +1,8 @@
-
+{
+  "rewrites": [
+    {
+      "source": "/r/:id_placa",
+      "destination": "/api/index.py"
+    }
+  ]
+}
