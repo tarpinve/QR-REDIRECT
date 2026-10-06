@@ -1,29 +1,55 @@
 import os
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
-from supabase import create_client, Client
-
-app = FastAPI()
+import json
+from urllib.parse import parse_qs, urlparse
+from http.server import BaseHTTPRequestHandler
+from supabase import create_client
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-@app.get("/")
-@app.get("/api/index")
-@app.get("/api/index.py")
-@app.get("/r/{id_placa}")
-def redirigir(id_placa: str = None):
-    if not id_placa:
-        raise HTTPException(status_code=400, detail="Falta el ID de la placa")
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Extraer el id de la URL (ej: /api/index?id=p001 o /r/p001)
+        parsed_path = urlparse(self.path)
+        path_parts = [p for p in parsed_path.path.split('/') if p]
         
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        raise HTTPException(status_code=500, detail="Faltan las credenciales de Supabase en Vercel")
+        id_placa = None
+        if len(path_parts) >= 2 and path_parts[0] == 'r':
+            id_placa = path_parts[1]
+        else:
+            query_params = parse_qs(parsed_path.query)
+            id_placa = query_params.get('id', [None])[0]
 
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    response = supabase.table("placas").select("url_destino").eq("id_placa", id_placa).execute()
+        if not id_placa:
+            self.send_response(400)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Falta el parámetro id"}).encode())
+            return
 
-    if response.data and len(response.data) > 0:
-        url_final = response.data[0]["url_destino"]
-        return RedirectResponse(url=url_final, status_code=302)
-    else:
-        raise HTTPException(status_code=404, detail=f"Placa '{id_placa}' no encontrada")
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Faltan credenciales de Supabase"}).encode())
+            return
+
+        try:
+            supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+            response = supabase.table("placas").select("url_destino").eq("id_placa", id_placa).execute()
+
+            if response.data and len(response.data) > 0:
+                url_final = response.data[0]["url_destino"]
+                self.send_response(302)
+                self.send_header('Location', url_final)
+                self.end_headers()
+            else:
+                self.send_response(404)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"Placa '{id_placa}' no encontrada"}).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
