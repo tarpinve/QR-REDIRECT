@@ -1,8 +1,19 @@
 {
-  "rewrites": [
+  "builds": [
     {
-      "source": "/r/:id_placa",
-      "destination": "/api/index.py"
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/r/(?<id_placa>[^/]+)",
+      "dest": "api/index.py?id_placa=$id_placa"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
     }
   ]
 }
+
