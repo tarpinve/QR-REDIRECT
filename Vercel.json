@@ -1,8 +1,8 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/r/:id_placa",
-      "destination": "/api/index.py"
+      "src": "/r/(?<id_placa>[^/]+)",
+      "dest": "/api/index.py?id_placa=$id_placa"
     }
   ]
 }
