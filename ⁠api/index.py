@@ -10,9 +10,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-@app.get("/api/index.py")
 @app.get("/api/index")
-@app.get("/r/{id_placa}")
 def redirigir(id_placa: str = None):
     if not id_placa:
         raise HTTPException(status_code=400, detail="Falta el ID de la placa")
